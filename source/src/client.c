@@ -6,6 +6,7 @@ int main(int argc, char *argv[])
     char   *input_string = NULL;
     char    filter[FILTER_SIZE];
     char    buffer[BUFFER_SIZE];
+    int     valid_args;
     int     fd_in;
     int     fd_out;
     ssize_t bytes_written;
@@ -15,14 +16,28 @@ int main(int argc, char *argv[])
     // Parse and Handle Command Line Arguments
     parse_arguments(argc, argv, &input_string, filter);
 
-    if(input_string == NULL)
+    if(argc > ARGS_NUM)
     {
-        perror("Error: No user string entered");
+        usage(argv[0], "Error: Too many arguments");
+        retval = -1;
         goto done;
     }
 
-    handle_arguments(argv[0], input_string, filter);
-    printf("Arguments handled\n");
+    if(input_string == NULL)
+    {
+        usage(argv[0], "Error: No user string entered");
+        retval = -1;
+        goto done;
+    }
+
+    valid_args = handle_arguments(argv[0], input_string, filter);
+
+    if(valid_args == -1)
+    {
+        usage(argv[0], "Error: Invalid arguments");
+        retval = -1;
+        goto done;
+    }
 
     // Open input FIFO for writing
     fd_in = open(FIFO_IN, O_WRONLY | O_CLOEXEC);
@@ -32,28 +47,25 @@ int main(int argc, char *argv[])
         retval = -1;
         goto done;
     }
-    printf("Opened FIFO_IN\n");
 
     // Open output FIFO for reading
     fd_out = open(FIFO_OUT, O_RDONLY | O_CLOEXEC);
     if(fd_out == -1)
     {
         perror("Error opening FIFO_OUT for reading");
-        retval = -2;
+        retval = -1;
         close(fd_in);
         goto done;
     }
-    printf("Opened FIFO_OUT\n");
 
     // Send the filter to the server
     bytes_written = write(fd_in, filter, strlen(filter));
     if(bytes_written == -1)
     {
         perror("Error writing filter to FIFO_IN");
-        retval = -3;
+        retval = -1;
         goto cleanup;
     }
-    printf("Filter sent to server\n");
 
     // Delimiter
     write(fd_in, "\n", 1);
@@ -63,24 +75,22 @@ int main(int argc, char *argv[])
     if(bytes_written == -1)
     {
         perror("Error writing input string to FIFO_IN");
-        retval = -4;
+        retval = -1;
         goto cleanup;
     }
-    printf("String sent to server\n");
 
     // Read the processed string from the server
     bytes_read = read(fd_out, buffer, BUFFER_SIZE - 1);
-    printf("Receiving data from server...\n");
     if(bytes_read == -1)
     {
         perror("Error reading from FIFO_OUT");
-        // retval = -5;
+        retval = -1;
         goto cleanup;
     }
     buffer[bytes_read] = '\0';
 
     // Print the processed string received from the server
-    printf("Processed String from Server: %s\n", buffer);
+    printf("Processed String from Server: %s\n\n", buffer);
 
 cleanup:
     close(fd_in);
@@ -95,24 +105,20 @@ static void parse_arguments(int argc, char *argv[], char **input_string, char fi
     int opt;
 
     opterr = 0;
-    printf("Parsing arguments... \n");
 
     while((opt = getopt(argc, argv, "hs:f:")) != -1)
     {
-        printf("opt: %c\n", opt);    // Add this to confirm which option is being processed.
         switch(opt)
         {
             case 's':
             {
                 *input_string = optarg;
-                printf("Set input_string: %s\n", *input_string);
                 break;
             }
             case 'f':
             {
                 strncpy(filter, optarg, FILTER_SIZE - 1);
                 filter[FILTER_SIZE - 1] = '\0';
-                printf("Set filter: %s\n", filter);
                 break;
             }
             case 'h':
@@ -126,22 +132,22 @@ static void parse_arguments(int argc, char *argv[], char **input_string, char fi
             }
         }
     }
-    printf("Finished parsing arguments: input_string=%s, filter=%s\n", *input_string, filter);
+    // printf("Finished parsing arguments: input_string=%s, filter=%s\n", *input_string, filter);
 }
 
-static void handle_arguments(const char *binary_name, const char *input_string, const char *filter)
+static int handle_arguments(const char *binary_name, const char *input_string, const char *filter)
 {
-    printf("Handling arguments\n");
-
     if(input_string == NULL)
     {
-        usage(binary_name, "-s is required");
+        return -1;
     }
 
     if(filter == NULL || (strcmp(filter, "upper") != 0 && strcmp(filter, "lower") != 0 && strcmp(filter, "null") != 0))
     {
-        usage(binary_name, "Invalid filter.");
+        return -1;
     }
+
+    return 0;
 }
 
 static void usage(const char *program_name, const char *message)

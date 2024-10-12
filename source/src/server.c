@@ -42,10 +42,6 @@ int main(void)
             retval = -2;
             goto done;
         }
-        else
-        {
-            printf("FIFO_IN already exists, using existing file.\n");
-        }
     }
 
     if(mkfifo(FIFO_OUT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH) == -1)
@@ -55,10 +51,6 @@ int main(void)
             perror("Error creating FIFO_OUT");
             retval = -3;
             goto done;
-        }
-        else
-        {
-            printf("FIFO_OUT already exists, using existing file.\n");
         }
     }
 
@@ -70,7 +62,6 @@ int main(void)
         retval = -4;
         goto done;
     }
-    printf("Opened FIFO_IN\n");
 
     // Open the write FIFO
     fd_out = open(FIFO_OUT, O_WRONLY | O_CLOEXEC);
@@ -82,7 +73,6 @@ int main(void)
         close(fd_in);
         goto done;
     }
-    printf("Opened FIFO_OUT\n");
 
     printf("\nServer started...\n");
 
@@ -177,7 +167,14 @@ void *read_string(const void *arg)
     bytes_wrote = write(fd_out, buffer, strlen(buffer));
     if(bytes_wrote == -1)
     {
-        perror("Error writing to FIFO_OUT");
+        if(errno == EPIPE)
+        {
+            printf("Cannot write to FIFO_OUT.\n");
+        }
+        else
+        {
+            perror("Error writing to FIFO_OUT");
+        }
     }
 
     return NULL;
