@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
         goto done;
     }
 
-    valid_args = handle_arguments(argv[0], input_string, filter);
+    valid_args = handle_arguments(input_string, filter);
 
     if(valid_args == -1)
     {
@@ -135,7 +135,7 @@ static void parse_arguments(int argc, char *argv[], char **input_string, char fi
     // printf("Finished parsing arguments: input_string=%s, filter=%s\n", *input_string, filter);
 }
 
-static int handle_arguments(const char *binary_name, const char *input_string, const char *filter)
+static int handle_arguments(const char *input_string, const char *filter)
 {
     if(input_string == NULL)
     {

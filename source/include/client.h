@@ -20,7 +20,7 @@
 #define ARGS_NUM 5
 
 static void parse_arguments(int argc, char *argv[], char **input_string, char filter[FILTER_SIZE]);
-static int  handle_arguments(const char *binary_name, const char *input_string, const char *filter);
+static int  handle_arguments(const char *input_string, const char *filter);
 static void usage(const char *program_name, const char *message);
 
 #endif    // CLIENT_H
